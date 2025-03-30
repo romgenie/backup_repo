@@ -1,0 +1,9 @@
+{
+  "mcp_server_328c3976": {
+    "name": "Time",
+    "description": "Time-related functions and utilities",
+    "type": "stdio",
+    "command": "docker",
+    "args": "run -i --rm mcp/time --local-timezone America/New_York"
+  }
+}

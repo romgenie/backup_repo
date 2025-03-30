@@ -1,0 +1,37 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tim Gregg <timgregg@Mac.lan>
+Date: Thu, 27 Mar 2025 11:55:00 -0400
+Subject: [PATCH] Add rounds configuration file
+
+This adds a configuration file for controlling various iteration parameters.
+
+---
+ config_rounds.ini | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+ create mode 100644 config_rounds.ini
+
+diff --git a/config_rounds.ini b/config_rounds.ini
+new file mode 100644
+index 0000000..1f88cdd
+--- /dev/null
++++ b/config_rounds.ini
+@@ -0,0 +1,17 @@
++[idea_generation]
++num_reflections = 10
++max_num_generations = 20
++max_attempts = 10
++max_num_iterations = 10
++
++[experiments]
++max_iters = 4
++max_runs = 5
++
++[review]
++num_reflections = 5
++num_reviews_ensemble = 5
++
++[writeup]
++num_cite_rounds = 20
++num_error_corrections = 5
+--
+2.39.5 (Apple Git-154)

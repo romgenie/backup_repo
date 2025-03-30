@@ -1,0 +1,238 @@
+/* Enhanced Styles for Agent Runner UI */
+
+/* General UI improvements */
+.stApp {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.streamlit-expanderHeader {
+    font-weight: 600;
+    color: #1E3A8A;
+}
+
+.stButton > button {
+    border-radius: 4px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.stButton > button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Form styling */
+.stForm {
+    border: 1px solid rgba(65, 105, 225, 0.2);
+    border-radius: 8px;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Status indicators */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-success {
+    background-color: rgba(40, 167, 69, 0.15);
+    color: #28a745;
+}
+
+.status-warning {
+    background-color: rgba(255, 193, 7, 0.15);
+    color: #ffc107;
+}
+
+.status-error {
+    background-color: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+}
+
+.status-info {
+    background-color: rgba(23, 162, 184, 0.15);
+    color: #17a2b8;
+}
+
+/* Card styling */
+.card {
+    border: 1px solid rgba(65, 105, 225, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background-color: white;
+    transition: all 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 8px rgba(65, 105, 225, 0.1);
+    transform: translateY(-2px);
+}
+
+.card-header {
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 8px;
+    color: #1E3A8A;
+}
+
+.card-content {
+    font-size: 14px;
+    color: #4B5563;
+}
+
+/* Metric improvements */
+.stMetric {
+    background-color: rgba(65, 105, 225, 0.05);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.stMetric > div {
+    margin-bottom: 0;
+}
+
+.stMetric label {
+    font-weight: 500;
+    color: #1E3A8A;
+}
+
+/* Tab styling */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 2px;
+}
+
+.stTabs [data-baseweb="tab"] {
+    padding: 10px 16px;
+    border-radius: 4px 4px 0 0;
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: rgba(65, 105, 225, 0.1);
+    font-weight: 500;
+}
+
+/* Chat message styling */
+.stChatMessage {
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+.stChatMessage.user {
+    background-color: rgba(65, 105, 225, 0.1);
+}
+
+.stChatMessage.assistant {
+    background-color: rgba(52, 211, 153, 0.1);
+}
+
+/* Model Management Specific Styles */
+.provider-card, .model-card {
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    transition: all 0.2s ease;
+}
+
+.provider-card:hover, .model-card:hover {
+    background-color: rgba(65, 105, 225, 0.15);
+    transform: translateY(-2px);
+}
+
+.provider-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.model-name {
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.model-tokens, .model-description {
+    color: #626E7F;
+    font-size: 14px;
+}
+
+/* Parameter form styling */
+.parameter-form {
+    border: 1px solid rgba(65, 105, 225, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+/* Tab styling for model parameters */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+}
+
+.stTabs [data-baseweb="tab"] {
+    border-radius: 4px;
+    padding: 8px 16px;
+}
+
+/* Status indicators */
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-active {
+    background-color: #28a745;
+}
+
+.status-inactive {
+    background-color: #dc3545;
+}
+
+.status-warning {
+    background-color: #ffc107;
+}
+
+/* API key field styling */
+.api-key-field {
+    font-family: monospace;
+    letter-spacing: 0.5px;
+}
+
+/* Settings table styling */
+.settings-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.settings-table th {
+    background-color: rgba(65, 105, 225, 0.1);
+    padding: 8px;
+    text-align: left;
+    font-weight: 500;
+}
+
+.settings-table td {
+    padding: 8px;
+    border-bottom: 1px solid rgba(65, 105, 225, 0.1);
+}
+
+/* Responsive layout adjustments */
+@media (max-width: 768px) {
+    .provider-card, .model-card {
+        padding: 12px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+}

@@ -1,0 +1,29 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tim Gregg <timgregg@Mac.lan>
+Date: Thu, 27 Mar 2025 11:53:00 -0400
+Subject: [PATCH] Fix: Add type check for baseline_results
+
+Add type checking for baseline_results before extracting means to prevent errors
+when processing different types of baseline results.
+
+---
+ launch_scientist.py | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/launch_scientist.py b/launch_scientist.py
+index 30cae40..6871862 100644
+--- a/launch_scientist.py
++++ b/launch_scientist.py
+@@ -171,7 +171,9 @@ def do_idea(
+     shutil.copytree(base_dir, destination_dir, dirs_exist_ok=True)
+     with open(osp.join(base_dir, "run_0", "final_info.json"), "r") as f:
+         baseline_results = json.load(f)
+-    baseline_results = {k: v["means"] for k, v in baseline_results.items()}
++    # Check if baseline_results is a dictionary before extracting means
++    if isinstance(baseline_results, dict):
++        baseline_results = {k: v["means"] for k, v in baseline_results.items()}
+     exp_file = osp.join(folder_name, "experiment.py")
+     vis_file = osp.join(folder_name, "plot.py")
+     notes = osp.join(folder_name, "notes.txt")
+-- 
+2.39.5 (Apple Git-154)

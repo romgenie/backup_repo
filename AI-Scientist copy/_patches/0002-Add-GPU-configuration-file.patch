@@ -1,0 +1,86 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tim Gregg <timgregg@Mac.lan>
+Date: Thu, 27 Mar 2025 11:52:00 -0400
+Subject: [PATCH] Add GPU configuration file
+
+Add config_gpu.ini to specify GPU device settings and implement its usage
+in templates and config loading system.
+
+---
+ ai_scientist/config.py               | 11 +++++++++++
+ config_gpu.ini                       |  3 +++
+ templates/nanoGPT/experiment.py      | 17 +++++++++++++++++
+ templates/nanoGPT_lite/experiment.py | 17 +++++++++++++++++
+ 4 files changed, 48 insertions(+)
+ create mode 100644 config_gpu.ini
+
+diff --git a/config_gpu.ini b/config_gpu.ini
+new file mode 100644
+index 0000000..5fb2d53
+--- /dev/null
++++ b/config_gpu.ini
+@@ -0,0 +1,3 @@
++[gpu]
++device = "mps"
++#device = "cuda"
+
+diff --git a/templates/nanoGPT/experiment.py b/templates/nanoGPT/experiment.py
+index 1cf2585..cca47b1 100644
+--- a/templates/nanoGPT/experiment.py
++++ b/templates/nanoGPT/experiment.py
+@@ -349,7 +349,23 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     # DDP settings
+     backend = "nccl"  # 'nccl', 'gloo', etc.
+     # system
+-    device = "cuda"  # Always use CUDA
++    # Load device configuration from config_gpu.ini if it exists
++    try:
++        import configparser
++        import os
++        config = configparser.ConfigParser()
++        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config_gpu.ini')
++        if os.path.exists(config_path):
++            config.read(config_path)
++            if 'gpu' in config and 'device' in config['gpu']:
++                device = config['gpu']['device'].strip('"').strip("'")
++            else:
++                device = "cuda"  # Default to CUDA if config exists but doesn't specify device
++        else:
++            device = "cuda"  # Default to CUDA if no config file
++    except:
++        # Fall back to default if any error occurs with config
++        device = "cuda"    # Always use CUDA
+     dtype = (
+         "bfloat16"
+         if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+diff --git a/templates/nanoGPT_lite/experiment.py b/templates/nanoGPT_lite/experiment.py
+index 6bcdd2d..c19729c 100644
+--- a/templates/nanoGPT_lite/experiment.py
++++ b/templates/nanoGPT_lite/experiment.py
+@@ -349,7 +349,23 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     # DDP settings
+     backend = "nccl"  # 'nccl', 'gloo', etc.
+     # system
+-    device = "cuda"  # Always use CUDA
++    # Load device configuration from config_gpu.ini if it exists
++    try:
++        import configparser
++        import os
++        config = configparser.ConfigParser()
++        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config_gpu.ini')
++        if os.path.exists(config_path):
++            config.read(config_path)
++            if 'gpu' in config and 'device' in config['gpu']:
++                device = config['gpu']['device'].strip('"').strip("'")
++            else:
++                device = "cuda"  # Default to CUDA if config exists but doesn't specify device
++        else:
++            device = "cuda"  # Default to CUDA if no config file
++    except:
++        # Fall back to default if any error occurs with config
++        device = "cuda"    # Always use CUDA
+     dtype = (
+         "bfloat16"
+         if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+-- 
+2.39.5 (Apple Git-154)

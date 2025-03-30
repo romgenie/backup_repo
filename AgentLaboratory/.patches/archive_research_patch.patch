@@ -1,0 +1,71 @@
+diff --git a/ai_lab_repo.py b/ai_lab_repo.py
+index d8e7c1e..a55b070 100755
+--- a/ai_lab_repo.py
++++ b/ai_lab_repo.py
+@@ -783,8 +783,11 @@ if __name__ == "__main__":
+     if parallel_labs:
+         remove_figures()
+         GLOBAL_AGENTRXIV = AgentRxiv()
+-        remove_directory(f"{RESEARCH_DIR_PATH}")
+-        os.mkdir(os.path.join(".", f"{RESEARCH_DIR_PATH}"))
++        from utils import archive_directory
++        archive_directory(f"{RESEARCH_DIR_PATH}")
++        # Ensure directory exists (archive_directory creates a new empty one)
++        if not os.path.exists(RESEARCH_DIR_PATH):
++            os.mkdir(os.path.join(".", f"{RESEARCH_DIR_PATH}"))
+         from concurrent.futures import ThreadPoolExecutor, as_completed
+         if not compile_pdf: raise Exception("PDF compilation must be used with agentRxiv!")
+         def run_lab(parallel_lab_index):
+@@ -831,8 +834,11 @@ if __name__ == "__main__":
+         remove_figures()
+         if agentRxiv: GLOBAL_AGENTRXIV = AgentRxiv(lab_index)
+         if not agentRxiv:
+-            remove_directory(f"{RESEARCH_DIR_PATH}")
+-            os.mkdir(os.path.join(".", f"{RESEARCH_DIR_PATH}"))
++            from utils import archive_directory
++            archive_directory(f"{RESEARCH_DIR_PATH}")
++            # Ensure directory exists (archive_directory creates a new empty one)
++            if not os.path.exists(RESEARCH_DIR_PATH):
++                os.mkdir(os.path.join(".", f"{RESEARCH_DIR_PATH}"))
+         # make src and research directory
+         if not os.path.exists("state_saves"): os.mkdir(os.path.join(".", "state_saves"))
+         time_str = str()
+diff --git a/utils.py b/utils.py
+index b424bde..cd46068 100755
+--- a/utils.py
++++ b/utils.py
+@@ -182,6 +182,34 @@ def remove_directory(dir_path):
+     else:
+         print(f"Directory {dir_path} does not exist or is not a directory.")
+ 
++def archive_directory(dir_path):
++    """Archive a directory if it exists instead of deleting it."""
++    if os.path.exists(dir_path) and os.path.isdir(dir_path):
++        try:
++            # Create archives directory if it doesn't exist
++            archive_dir = "archived_research"
++            if not os.path.exists(archive_dir):
++                os.makedirs(archive_dir)
++            
++            # Create a timestamp for unique archive name
++            timestamp = time.strftime("%Y%m%d_%H%M%S")
++            dir_name = os.path.basename(dir_path)
++            archive_path = os.path.join(archive_dir, f"{dir_name}_{timestamp}")
++            
++            # Move the directory to archives
++            shutil.move(dir_path, archive_path)
++            print(f"Directory {dir_path} archived successfully to {archive_path}")
++            
++            # Create a new empty directory with the original name
++            os.makedirs(dir_path)
++            return archive_path
++        except Exception as e:
++            print(f"Error archiving directory {dir_path}: {e}")
++            return None
++    else:
++        print(f"Directory {dir_path} does not exist or is not a directory.")
++        return None
++
+ 
+ def save_to_file(location, filename, data):
+     """Utility function to save data as plain text."""

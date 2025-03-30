@@ -1,0 +1,34 @@
+M2 Max Performance Optimization
+=============================
+
+This patch optimizes the AI-Scientist code for Apple M2 Max hardware with Metal Performance Shaders (MPS).
+
+System Specifications:
+- Apple M2 Max (12 cores)
+- 32GB RAM
+- macOS 24.3.0 Darwin Kernel
+- PyTorch 2.6.0 with MPS backend
+
+Key optimizations:
+1. Added MPS device support in experiment.py for Apple Silicon
+2. Created config_gpu.ini with optimized settings for M2 Max
+3. Tuned memory management for 32GB system
+4. Configured precision settings for MPS stability (float32)
+5. Optimized model architecture for better performance
+6. Improved data loading with pinned memory and async transfers
+7. Added path flexibility for running from different directories
+8. Implemented periodic cache clearing to prevent memory fragmentation
+9. Adjusted batch size and gradient accumulation for throughput
+10. Reduced model size but increased context window for better efficiency
+
+To apply this patch:
+```
+git apply m2_max_performance_optimization.patch
+```
+
+To revert:
+```
+git checkout -- templates/nanoGPT/experiment.py templates/nanoGPT_lite/experiment.py config_gpu.ini
+```
+
+See performance_changes.md for more details on the optimizations.

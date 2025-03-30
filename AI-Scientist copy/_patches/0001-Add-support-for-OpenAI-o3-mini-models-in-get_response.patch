@@ -1,0 +1,344 @@
+diff --git a/NPEET b/NPEET
+new file mode 160000
+index 0000000..8b0d948
+--- /dev/null
++++ b/NPEET
+@@ -0,0 +1 @@
++Subproject commit 8b0d9485423f74e5eb199324cf362765596538d3
+diff --git a/_patches/0001-Add-support-for-OpenAI-o3-mini-models-in-get_respons.patch b/_patches/0001-Add-support-for-OpenAI-o3-mini-models-in-get_respons.patch
+new file mode 100644
+index 0000000..4dde39a
+--- /dev/null
++++ b/_patches/0001-Add-support-for-OpenAI-o3-mini-models-in-get_respons.patch
+@@ -0,0 +1,50 @@
++From 4f5a5a448ed42c4827a94be4338dd82449b79039 Mon Sep 17 00:00:00 2001
++From: Tim Gregg <timgregg@Mac.lan>
++Date: Wed, 26 Mar 2025 22:43:00 -0400
++Subject: [PATCH] Add support for OpenAI o3-mini models in
++ get_response_from_llm
++MIME-Version: 1.0
++Content-Type: text/plain; charset=UTF-8
++Content-Transfer-Encoding: 8bit
++
++🤖 Generated with [Claude Code](https://claude.ai/code)
++
++Co-Authored-By: Claude <noreply@anthropic.com>
++---
++ ai_scientist/llm.py | 6 +++++-
++ 1 file changed, 5 insertions(+), 1 deletion(-)
++
++diff --git a/ai_scientist/llm.py b/ai_scientist/llm.py
++index 5222f5b..9717109 100644
++--- a/ai_scientist/llm.py
+++++ b/ai_scientist/llm.py
++@@ -18,6 +18,8 @@ AVAILABLE_LLMS = [
++     "gpt-4o-mini-2024-07-18",
++     "gpt-4o-2024-05-13",
++     "gpt-4o-2024-08-06",
+++    "o3-mini",
+++    "o3-mini-2025-01-31",
++     "o1-preview-2024-09-12",
++     "o1-mini-2024-09-12",
++     "o1-2024-12-17",
++@@ -194,6 +196,8 @@ def get_response_from_llm(
++         "o1-preview-2024-09-12", 
++         "o1-mini-2024-09-12",
++         "o1-2024-12-17",
+++        "o3-mini",
+++        "o3-mini-2025-01-31",
++     ]:
++         new_msg_history = msg_history + [{"role": "user", "content": msg}]
++         response = client.chat.completions.create(
++@@ -325,7 +329,7 @@ def create_client(model):
++     elif 'gpt' in model:
++         print(f"Using OpenAI API with model {model}.")
++         return openai.OpenAI(), model
++-    elif model in ["o1-preview-2024-09-12", "o1-mini-2024-09-12"]:
+++    elif model in ["o1-preview-2024-09-12", "o1-mini-2024-09-12", "o3-mini", "o3-mini-2025-01-31"]:
++         print(f"Using OpenAI API with model {model}.")
++         return openai.OpenAI(), model
++     elif model in ["deepseek-chat", "deepseek-reasoner"]:
++-- 
++2.39.5 (Apple Git-154)
++
+diff --git a/_patches/0002-Add-GPU-configuration-file.patch b/_patches/0002-Add-GPU-configuration-file.patch
+new file mode 100644
+index 0000000..f07e454
+--- /dev/null
++++ b/_patches/0002-Add-GPU-configuration-file.patch
+@@ -0,0 +1,107 @@
++From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
++From: Tim Gregg <timgregg@Mac.lan>
++Date: Wed, 27 Mar 2025 00:00:00 -0400
++Subject: [PATCH] Add GPU configuration file and implementation
++
++Add config_gpu.ini to specify GPU device settings and implement its usage
++in templates and config loading system.
++---
++ ai_scientist/config.py               | 11 +++++++++++
++ config_gpu.ini                       |  3 +++
++ templates/nanoGPT/experiment.py      | 17 +++++++++++++++++
++ templates/nanoGPT_lite/experiment.py | 17 +++++++++++++++++
++ 4 files changed, 48 insertions(+)
++ create mode 100644 config_gpu.ini
++
++diff --git a/ai_scientist/config.py b/ai_scientist/config.py
++index 75c6a63..27c7a0c 100644
++--- a/ai_scientist/config.py
+++++ b/ai_scientist/config.py
++@@ -7,6 +7,8 @@ def load_config():
++     """
++     config = configparser.ConfigParser()
++     base_dir = os.path.dirname(os.path.dirname(__file__))
+++    config_rounds_path = os.path.join(base_dir, 'config_rounds.ini')
+++    config_gpu_path = os.path.join(base_dir, 'config_gpu.ini')
++     
++     # Set default values if config files don't exist
++     if not os.path.exists(config_rounds_path):
++@@ -31,5 +33,14 @@ def load_config():
++     else:
++         config.read(config_rounds_path)
++     
+++    # Load GPU config if it exists
+++    if os.path.exists(config_gpu_path):
+++        config.read(config_gpu_path)  # This will override any duplicate sections/keys
+++    
++     return config
+++
++diff --git a/config_gpu.ini b/config_gpu.ini
++new file mode 100644
++index 0000000..5fb2d53
++--- /dev/null
+++++ b/config_gpu.ini
++@@ -0,0 +1,3 @@
+++[gpu]
+++device = "mps"
+++#device = "cuda"
++diff --git a/templates/nanoGPT/experiment.py b/templates/nanoGPT/experiment.py
++index bf2e83e..9e4aaa7 100644
++--- a/templates/nanoGPT/experiment.py
+++++ b/templates/nanoGPT/experiment.py
++@@ -1126,7 +1126,24 @@ def run_experiment(seed, dataset, **kwargs):
++     # DDP settings
++     backend = "nccl"  # 'nccl', 'gloo', etc.
++     # system
++-    device = "mps"    # MPS for Apple Silicon GPUs, cuda for NVIDIA GPUs
+++    # Load device configuration from config_gpu.ini if it exists
+++    try:
+++        import configparser
+++        import os
+++        config = configparser.ConfigParser()
+++        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config_gpu.ini')
+++        if os.path.exists(config_path):
+++            config.read(config_path)
+++            if 'gpu' in config and 'device' in config['gpu']:
+++                device = config['gpu']['device'].strip('"').strip("'")
+++            else:
+++                device = "mps"  # Default to MPS if config exists but doesn't specify device
+++        else:
+++            device = "mps"  # Default to MPS if no config file
+++    except:
+++        # Fall back to default if any error occurs with config
+++        device = "mps"    # MPS for Apple Silicon GPUs
+++
++     # For MPS on Mac, float32 is more reliable
++     dtype = "float32" if device == "mps" else (
++         "bfloat16"
++diff --git a/templates/nanoGPT_lite/experiment.py b/templates/nanoGPT_lite/experiment.py
++index cddf88e..a2fb7a4 100644
++--- a/templates/nanoGPT_lite/experiment.py
+++++ b/templates/nanoGPT_lite/experiment.py
++@@ -935,7 +935,24 @@ def run_experiment(seed, dataset, **kwargs):
++     # DDP settings
++     backend = "nccl"  # 'nccl', 'gloo', etc.
++     # system
++-    device = "mps"    # MPS for Apple Silicon GPUs, cuda for NVIDIA GPUs
+++    # Load device configuration from config_gpu.ini if it exists
+++    try:
+++        import configparser
+++        import os
+++        config = configparser.ConfigParser()
+++        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config_gpu.ini')
+++        if os.path.exists(config_path):
+++            config.read(config_path)
+++            if 'gpu' in config and 'device' in config['gpu']:
+++                device = config['gpu']['device'].strip('"').strip("'")
+++            else:
+++                device = "mps"  # Default to MPS if config exists but doesn't specify device
+++        else:
+++            device = "mps"  # Default to MPS if no config file
+++    except:
+++        # Fall back to default if any error occurs with config
+++        device = "mps"    # MPS for Apple Silicon GPUs
+++        
++     # For MPS on Mac, float32 is more reliable
++     dtype = "float32" if device == "mps" else (
++         "bfloat16"
+diff --git a/_patches/0003-Add-rounds-configuration-file.patch b/_patches/0003-Add-rounds-configuration-file.patch
+new file mode 100644
+index 0000000..93e3f0a
+--- /dev/null
++++ b/_patches/0003-Add-rounds-configuration-file.patch
+@@ -0,0 +1,79 @@
++From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
++From: Tim Gregg <timgregg@Mac.lan>
++Date: Wed, 27 Mar 2025 00:00:00 -0400
++Subject: [PATCH] Add rounds configuration file and implementation
++
++Add config_rounds.ini to control various iteration parameters and integrate
++with the configuration loading system.
++---
++ ai_scientist/config.py | 30 ++++++++++++++++++++++++++++++
++ config_rounds.ini      | 17 +++++++++++++++++
++ 2 files changed, 47 insertions(+)
++ create mode 100644 config_rounds.ini
++
++diff --git a/ai_scientist/config.py b/ai_scientist/config.py
++index 6e27adc..75c6a63 100644
++--- a/ai_scientist/config.py
+++++ b/ai_scientist/config.py
++@@ -1,5 +1,35 @@
+++import configparser
+++import os
++ 
++-def load_config():
++-    # Placeholder for future configuration system
++-    pass
+++def load_config():
+++    """
+++    Load the configuration from config_rounds.ini and config_gpu.ini files
+++    """
+++    config = configparser.ConfigParser()
+++    base_dir = os.path.dirname(os.path.dirname(__file__))
+++    
+++    # Set default values if config files don't exist
+++    if not os.path.exists(config_rounds_path):
+++        config['idea_generation'] = {
+++            'num_reflections': '3',
+++            'max_num_generations': '20',
+++            'max_attempts': '10',
+++            'max_num_iterations': '10'
+++        }
+++        config['experiments'] = {
+++            'max_iters': '4',
+++            'max_runs': '5'
+++        }
+++        config['review'] = {
+++            'num_reflections': '5',
+++            'num_reviews_ensemble': '5'
+++        }
+++        config['writeup'] = {
+++            'num_cite_rounds': '20',
+++            'num_error_corrections': '5'
+++        }
+++    else:
+++        config.read(config_rounds_path)
+++    
+++    return config
++ 
++diff --git a/config_rounds.ini b/config_rounds.ini
++new file mode 100644
++index 0000000..1f88cdd
++--- /dev/null
+++++ b/config_rounds.ini
++@@ -0,0 +1,17 @@
+++[idea_generation]
+++num_reflections = 10
+++max_num_generations = 20
+++max_attempts = 10
+++max_num_iterations = 10
+++
+++[experiments]
+++max_iters = 4
+++max_runs = 5
+++
+++[review]
+++num_reflections = 5
+++num_reviews_ensemble = 5
+++
+++[writeup]
+++num_cite_rounds = 20
+++num_error_corrections = 5
+diff --git a/_patches/0004-Fix-Add-type-check-for-baseline_results.patch b/_patches/0004-Fix-Add-type-check-for-baseline_results.patch
+new file mode 100644
+index 0000000..b2376ad
+--- /dev/null
++++ b/_patches/0004-Fix-Add-type-check-for-baseline_results.patch
+@@ -0,0 +1,36 @@
++From 4ec7e317001a87a5e2d381acb0c2a55cbd24b2f7 Mon Sep 17 00:00:00 2001
++From: Tim Gregg <timgregg@Mac.lan>
++Date: Wed, 26 Mar 2025 23:54:06 -0400
++Subject: [PATCH] Fix: Add type check for baseline_results
++MIME-Version: 1.0
++Content-Type: text/plain; charset=UTF-8
++Content-Transfer-Encoding: 8bit
++
++Add type checking for baseline_results before extracting means to prevent errors
++when processing different types of baseline results.
++
++🤖 Generated with [Claude Code](https://claude.ai/code)
++
++Co-Authored-By: Claude <noreply@anthropic.com>
++---
++ launch_scientist.py | 4 +++-
++ 1 file changed, 3 insertions(+), 1 deletion(-)
++
++diff --git a/launch_scientist.py b/launch_scientist.py
++index 30cae40..6871862 100644
++--- a/launch_scientist.py
+++++ b/launch_scientist.py
++@@ -171,7 +171,9 @@ def do_idea(
++     shutil.copytree(base_dir, destination_dir, dirs_exist_ok=True)
++     with open(osp.join(base_dir, "run_0", "final_info.json"), "r") as f:
++         baseline_results = json.load(f)
++-    baseline_results = {k: v["means"] for k, v in baseline_results.items()}
+++    # Check if baseline_results is a dictionary before extracting means
+++    if isinstance(baseline_results, dict):
+++        baseline_results = {k: v["means"] for k, v in baseline_results.items()}
++     exp_file = osp.join(folder_name, "experiment.py")
++     vis_file = osp.join(folder_name, "plot.py")
++     notes = osp.join(folder_name, "notes.txt")
++-- 
++2.39.5 (Apple Git-154)
++
+diff --git a/ai_scientist/llm.py b/ai_scientist/llm.py
+index 5222f5b..9717109 100644
+--- a/ai_scientist/llm.py
++++ b/ai_scientist/llm.py
+@@ -18,6 +18,8 @@ AVAILABLE_LLMS = [
+     "gpt-4o-mini-2024-07-18",
+     "gpt-4o-2024-05-13",
+     "gpt-4o-2024-08-06",
++    "o3-mini",
++    "o3-mini-2025-01-31",
+     "o1-preview-2024-09-12",
+     "o1-mini-2024-09-12",
+     "o1-2024-12-17",
+@@ -194,6 +196,8 @@ def get_response_from_llm(
+         "o1-preview-2024-09-12", 
+         "o1-mini-2024-09-12",
+         "o1-2024-12-17",
++        "o3-mini",
++        "o3-mini-2025-01-31",
+     ]:
+         new_msg_history = msg_history + [{"role": "user", "content": msg}]
+         response = client.chat.completions.create(
+@@ -325,7 +329,7 @@ def create_client(model):
+     elif 'gpt' in model:
+         print(f"Using OpenAI API with model {model}.")
+         return openai.OpenAI(), model
+-    elif model in ["o1-preview-2024-09-12", "o1-mini-2024-09-12"]:
++    elif model in ["o1-preview-2024-09-12", "o1-mini-2024-09-12", "o3-mini", "o3-mini-2025-01-31"]:
+         print(f"Using OpenAI API with model {model}.")
+         return openai.OpenAI(), model
+     elif model in ["deepseek-chat", "deepseek-reasoner"]:
+diff --git a/config_gpu.ini b/config_gpu.ini
+new file mode 100644
+index 0000000..5fb2d53
+--- /dev/null
++++ b/config_gpu.ini
+@@ -0,0 +1,3 @@
++[gpu]
++device = "mps"
++#device = "cuda"
+\ No newline at end of file

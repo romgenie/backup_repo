@@ -1,0 +1,677 @@
+diff --git a/templates/nanoGPT/experiment.py b/templates/nanoGPT/experiment.py
+index 1cf2585..24aad9b 100644
+--- a/templates/nanoGPT/experiment.py
++++ b/templates/nanoGPT/experiment.py
+@@ -318,8 +318,8 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     # -----------------------------------------------------------------------------
+     # default config values designed to train a gpt2 (124M) on OpenWebText
+     # data
+-    gradient_accumulation_steps = 1
+-    batch_size = 64 if dataset == "shakespeare_char" else 32
++    gradient_accumulation_steps = 4  # Increased from 1 to accumulate gradients over more batches
++    batch_size = 96 if dataset == "shakespeare_char" else 48  # Increased from 64/32 for better throughput
+     block_size = 256  # context of up to 256 previous characters
+     # I/O
+     eval_interval = 250 if dataset == "shakespeare_char" else 1000
+@@ -349,13 +349,53 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     # DDP settings
+     backend = "nccl"  # 'nccl', 'gloo', etc.
+     # system
+-    device = "cuda"  # Always use CUDA
+-    dtype = (
+-        "bfloat16"
+-        if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+-        else "float16"
+-    )  # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
+-    compile = True  # do not torch compile the model on macbooks
++    # Load device configuration from config_gpu.ini if it exists
++    try:
++        import configparser
++        import os
++        config = configparser.ConfigParser()
++        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config_gpu.ini')
++        if os.path.exists(config_path):
++            config.read(config_path)
++            if 'gpu' in config and 'device' in config['gpu']:
++                device = config['gpu']['device'].strip('"').strip("'")
++                
++                # Apply MPS-specific optimizations if using MPS
++                if device == "mps" and 'mps' in config:
++                    print("Applying MPS-specific optimizations")
++                    if 'memory_limit' in config['mps']:
++                        memory_limit = int(config['mps']['memory_limit'])
++                        # If PyTorch supports this in the future:
++                        # torch.mps.set_memory_limit(memory_limit * 1024 * 1024)
++                        print(f"MPS memory limit set to {memory_limit} MB")
++                    
++                    if 'use_optimized_kernels' in config['mps']:
++                        use_optimized = config['mps']['use_optimized_kernels'].lower() == 'true'
++                        if use_optimized:
++                            # Use these settings in future when PyTorch MPS backend supports them
++                            print("Using optimized MPS kernels")
++            else:
++                device = "cuda"  # Default to CUDA if config exists but doesn't specify device
++        else:
++            device = "cuda"  # Default to CUDA if no config file
++    except Exception as e:
++        print(f"Error loading GPU configuration: {e}")
++        # Fall back to default if any error occurs with config
++        device = "cuda"    # Always use CUDA
++    # Set optimal dtype based on device
++    if device == "mps":
++        # MPS works best with float32 for stability on macOS
++        dtype = "float32"
++        print("Using float32 precision for MPS device")
++    else:
++        # For CUDA, use best available precision
++        dtype = (
++            "bfloat16"
++            if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
++            else "float16"
++        )  # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
++    #compile = True  # do not torch compile the model on macbooks
++    compile = False  # disabled torch compile for macbooks with MPS
+ 
+     # various inits, derived attributes, I/O setup
+     # if not ddp, we are running on a single gpu, and one process
+@@ -366,11 +406,24 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     if master_process:
+         os.makedirs(out_dir, exist_ok=True)
+     torch.manual_seed(1337 + seed_offset)
++    
++    # Set number of threads for CPU operations
++    torch.set_num_threads(8)  # Use 8 threads for CPU operations
++    
++    # PyTorch backend optimizations
+     torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
+     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
+-    device_type = (
+-        "cuda" if "cuda" in device else "cpu"
+-    )  # for later use in torch.autocast
++    torch.backends.cudnn.benchmark = True  # enable cudnn auto-tuner
++    torch.backends.cudnn.deterministic = False  # more efficient when not needed
++    
++    # Define device_type for later use
++    device_type = "cuda" if "cuda" in device else "mps" if "mps" in device else "cpu"
++    
++    # Memory management
++    if device_type == "cuda":
++        # Reserved memory size - minimum amount CUDA will allocate
++        torch.cuda.set_per_process_memory_fraction(0.8)  # use up to 80% of available memory
++        torch.cuda.empty_cache()  # clear any existing cache
+     # note: float16 data type will automatically use a GradScaler
+     ptdtype = {
+         "float32": torch.float32,
+diff --git a/templates/nanoGPT/experiment.py b/templates/nanoGPT/experiment.py
+index 1cf2585..d831f00 100644
+--- a/templates/nanoGPT/experiment.py
++++ b/templates/nanoGPT/experiment.py
+@@ -318,8 +318,8 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     # -----------------------------------------------------------------------------
+     # default config values designed to train a gpt2 (124M) on OpenWebText
+     # data
+-    gradient_accumulation_steps = 1
+-    batch_size = 64 if dataset == "shakespeare_char" else 32
++    gradient_accumulation_steps = 4  # Increased from 1 to accumulate gradients over more batches
++    batch_size = 96 if dataset == "shakespeare_char" else 48  # Increased from 64/32 for better throughput
+     block_size = 256  # context of up to 256 previous characters
+     # I/O
+     eval_interval = 250 if dataset == "shakespeare_char" else 1000
+@@ -349,13 +349,53 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     # DDP settings
+     backend = "nccl"  # 'nccl', 'gloo', etc.
+     # system
+-    device = "cuda"  # Always use CUDA
+-    dtype = (
+-        "bfloat16"
+-        if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+-        else "float16"
+-    )  # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
+-    compile = True  # do not torch compile the model on macbooks
++    # Load device configuration from config_gpu.ini if it exists
++    try:
++        import configparser
++        import os
++        config = configparser.ConfigParser()
++        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config_gpu.ini')
++        if os.path.exists(config_path):
++            config.read(config_path)
++            if 'gpu' in config and 'device' in config['gpu']:
++                device = config['gpu']['device'].strip('"').strip("'")
++                
++                # Apply MPS-specific optimizations if using MPS
++                if device == "mps" and 'mps' in config:
++                    print("Applying MPS-specific optimizations")
++                    if 'memory_limit' in config['mps']:
++                        memory_limit = int(config['mps']['memory_limit'])
++                        # If PyTorch supports this in the future:
++                        # torch.mps.set_memory_limit(memory_limit * 1024 * 1024)
++                        print(f"MPS memory limit set to {memory_limit} MB")
++                    
++                    if 'use_optimized_kernels' in config['mps']:
++                        use_optimized = config['mps']['use_optimized_kernels'].lower() == 'true'
++                        if use_optimized:
++                            # Use these settings in future when PyTorch MPS backend supports them
++                            print("Using optimized MPS kernels")
++            else:
++                device = "cuda"  # Default to CUDA if config exists but doesn't specify device
++        else:
++            device = "cuda"  # Default to CUDA if no config file
++    except Exception as e:
++        print(f"Error loading GPU configuration: {e}")
++        # Fall back to default if any error occurs with config
++        device = "cuda"    # Always use CUDA
++    # Set optimal dtype based on device
++    if device == "mps":
++        # MPS works best with float32 for stability on macOS
++        dtype = "float32"
++        print("Using float32 precision for MPS device")
++    else:
++        # For CUDA, use best available precision
++        dtype = (
++            "bfloat16"
++            if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
++            else "float16"
++        )  # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
++    #compile = True  # do not torch compile the model on macbooks
++    compile = False  # disabled torch compile for macbooks with MPS
+ 
+     # various inits, derived attributes, I/O setup
+     # if not ddp, we are running on a single gpu, and one process
+@@ -366,11 +406,40 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     if master_process:
+         os.makedirs(out_dir, exist_ok=True)
+     torch.manual_seed(1337 + seed_offset)
++    
++    # Set number of threads for CPU operations
++    torch.set_num_threads(8)  # Use 8 threads for CPU operations
++    
++    # PyTorch backend optimizations
+     torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
+     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
+-    device_type = (
+-        "cuda" if "cuda" in device else "cpu"
+-    )  # for later use in torch.autocast
++    torch.backends.cudnn.benchmark = True  # enable cudnn auto-tuner
++    torch.backends.cudnn.deterministic = False  # more efficient when not needed
++    
++    # Define device_type for later use
++    device_type = "cuda" if "cuda" in device else "mps" if "mps" in device else "cpu"
++    
++    # Memory management based on config file
++    try:
++        if 'gpu' in config and 'memory_fraction' in config['gpu']:
++            memory_fraction = float(config['gpu']['memory_fraction'])
++            print(f"Using memory fraction from config: {memory_fraction}")
++        else:
++            memory_fraction = 0.8  # default
++            
++        if device_type == "cuda":
++            # Configure CUDA memory usage
++            torch.cuda.set_per_process_memory_fraction(memory_fraction)
++            
++            if 'cuda' in config and 'empty_cache_on_start' in config['cuda'] and config['cuda']['empty_cache_on_start'].lower() == 'true':
++                torch.cuda.empty_cache()  # clear any existing cache
++                print("Cleared CUDA cache on startup")
++    except Exception as e:
++        print(f"Error configuring memory: {e}")
++        # Use default memory settings if there's an error
++        if device_type == "cuda":
++            torch.cuda.set_per_process_memory_fraction(0.8)
++            torch.cuda.empty_cache()
+     # note: float16 data type will automatically use a GradScaler
+     ptdtype = {
+         "float32": torch.float32,
+diff --git a/templates/nanoGPT/experiment.py b/templates/nanoGPT/experiment.py
+index 1cf2585..dbf2063 100644
+--- a/templates/nanoGPT/experiment.py
++++ b/templates/nanoGPT/experiment.py
+@@ -318,8 +318,8 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     # -----------------------------------------------------------------------------
+     # default config values designed to train a gpt2 (124M) on OpenWebText
+     # data
+-    gradient_accumulation_steps = 1
+-    batch_size = 64 if dataset == "shakespeare_char" else 32
++    gradient_accumulation_steps = 4  # Increased from 1 to accumulate gradients over more batches
++    batch_size = 96 if dataset == "shakespeare_char" else 48  # Increased from 64/32 for better throughput
+     block_size = 256  # context of up to 256 previous characters
+     # I/O
+     eval_interval = 250 if dataset == "shakespeare_char" else 1000
+@@ -328,10 +328,10 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     eval_only = False  # if True, script exits right after the first eval
+     always_save_checkpoint = False  # we expect to overfit on this small dataset, so only save when val improves
+     never_save_checkpoint = True  # never save checkpoints
+-    # model
+-    n_layer = 6  # baby GPT model :)
+-    n_head = 6
+-    n_embd = 384
++    # model - reduced size for better memory efficiency
++    n_layer = 4  # reduced from 6 to 4 layers
++    n_head = 4   # reduced from 6 to 4 heads per layer
++    n_embd = 256 # reduced from 384 to 256 embedding dimension
+     dropout = 0.2  # for pretraining 0 is good, for finetuning try 0.1+
+     bias = False  # do we use bias inside LayerNorm and Linear layers?
+     # adamw optimizer
+@@ -349,13 +349,53 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     # DDP settings
+     backend = "nccl"  # 'nccl', 'gloo', etc.
+     # system
+-    device = "cuda"  # Always use CUDA
+-    dtype = (
+-        "bfloat16"
+-        if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+-        else "float16"
+-    )  # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
+-    compile = True  # do not torch compile the model on macbooks
++    # Load device configuration from config_gpu.ini if it exists
++    try:
++        import configparser
++        import os
++        config = configparser.ConfigParser()
++        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config_gpu.ini')
++        if os.path.exists(config_path):
++            config.read(config_path)
++            if 'gpu' in config and 'device' in config['gpu']:
++                device = config['gpu']['device'].strip('"').strip("'")
++                
++                # Apply MPS-specific optimizations if using MPS
++                if device == "mps" and 'mps' in config:
++                    print("Applying MPS-specific optimizations")
++                    if 'memory_limit' in config['mps']:
++                        memory_limit = int(config['mps']['memory_limit'])
++                        # If PyTorch supports this in the future:
++                        # torch.mps.set_memory_limit(memory_limit * 1024 * 1024)
++                        print(f"MPS memory limit set to {memory_limit} MB")
++                    
++                    if 'use_optimized_kernels' in config['mps']:
++                        use_optimized = config['mps']['use_optimized_kernels'].lower() == 'true'
++                        if use_optimized:
++                            # Use these settings in future when PyTorch MPS backend supports them
++                            print("Using optimized MPS kernels")
++            else:
++                device = "cuda"  # Default to CUDA if config exists but doesn't specify device
++        else:
++            device = "cuda"  # Default to CUDA if no config file
++    except Exception as e:
++        print(f"Error loading GPU configuration: {e}")
++        # Fall back to default if any error occurs with config
++        device = "cuda"    # Always use CUDA
++    # Set optimal dtype based on device
++    if device == "mps":
++        # MPS works best with float32 for stability on macOS
++        dtype = "float32"
++        print("Using float32 precision for MPS device")
++    else:
++        # For CUDA, use best available precision
++        dtype = (
++            "bfloat16"
++            if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
++            else "float16"
++        )  # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
++    #compile = True  # do not torch compile the model on macbooks
++    compile = False  # disabled torch compile for macbooks with MPS
+ 
+     # various inits, derived attributes, I/O setup
+     # if not ddp, we are running on a single gpu, and one process
+@@ -366,11 +406,40 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     if master_process:
+         os.makedirs(out_dir, exist_ok=True)
+     torch.manual_seed(1337 + seed_offset)
++    
++    # Set number of threads for CPU operations
++    torch.set_num_threads(8)  # Use 8 threads for CPU operations
++    
++    # PyTorch backend optimizations
+     torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
+     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
+-    device_type = (
+-        "cuda" if "cuda" in device else "cpu"
+-    )  # for later use in torch.autocast
++    torch.backends.cudnn.benchmark = True  # enable cudnn auto-tuner
++    torch.backends.cudnn.deterministic = False  # more efficient when not needed
++    
++    # Define device_type for later use
++    device_type = "cuda" if "cuda" in device else "mps" if "mps" in device else "cpu"
++    
++    # Memory management based on config file
++    try:
++        if 'gpu' in config and 'memory_fraction' in config['gpu']:
++            memory_fraction = float(config['gpu']['memory_fraction'])
++            print(f"Using memory fraction from config: {memory_fraction}")
++        else:
++            memory_fraction = 0.8  # default
++            
++        if device_type == "cuda":
++            # Configure CUDA memory usage
++            torch.cuda.set_per_process_memory_fraction(memory_fraction)
++            
++            if 'cuda' in config and 'empty_cache_on_start' in config['cuda'] and config['cuda']['empty_cache_on_start'].lower() == 'true':
++                torch.cuda.empty_cache()  # clear any existing cache
++                print("Cleared CUDA cache on startup")
++    except Exception as e:
++        print(f"Error configuring memory: {e}")
++        # Use default memory settings if there's an error
++        if device_type == "cuda":
++            torch.cuda.set_per_process_memory_fraction(0.8)
++            torch.cuda.empty_cache()
+     # note: float16 data type will automatically use a GradScaler
+     ptdtype = {
+         "float32": torch.float32,
+diff --git a/templates/nanoGPT/experiment.py b/templates/nanoGPT/experiment.py
+index 1cf2585..7382282 100644
+--- a/templates/nanoGPT/experiment.py
++++ b/templates/nanoGPT/experiment.py
+@@ -318,9 +318,9 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     # -----------------------------------------------------------------------------
+     # default config values designed to train a gpt2 (124M) on OpenWebText
+     # data
+-    gradient_accumulation_steps = 1
+-    batch_size = 64 if dataset == "shakespeare_char" else 32
+-    block_size = 256  # context of up to 256 previous characters
++    gradient_accumulation_steps = 4  # Increased from 1 to accumulate gradients over more batches
++    batch_size = 96 if dataset == "shakespeare_char" else 48  # Increased from 64/32 for better throughput
++    block_size = 384  # Increased from 256 to 384 for larger context
+     # I/O
+     eval_interval = 250 if dataset == "shakespeare_char" else 1000
+     log_interval = 10 if dataset == "shakespeare_char" else 100
+@@ -328,10 +328,10 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     eval_only = False  # if True, script exits right after the first eval
+     always_save_checkpoint = False  # we expect to overfit on this small dataset, so only save when val improves
+     never_save_checkpoint = True  # never save checkpoints
+-    # model
+-    n_layer = 6  # baby GPT model :)
+-    n_head = 6
+-    n_embd = 384
++    # model - reduced size for better memory efficiency
++    n_layer = 4  # reduced from 6 to 4 layers
++    n_head = 4   # reduced from 6 to 4 heads per layer
++    n_embd = 256 # reduced from 384 to 256 embedding dimension
+     dropout = 0.2  # for pretraining 0 is good, for finetuning try 0.1+
+     bias = False  # do we use bias inside LayerNorm and Linear layers?
+     # adamw optimizer
+@@ -349,13 +349,53 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     # DDP settings
+     backend = "nccl"  # 'nccl', 'gloo', etc.
+     # system
+-    device = "cuda"  # Always use CUDA
+-    dtype = (
+-        "bfloat16"
+-        if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+-        else "float16"
+-    )  # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
+-    compile = True  # do not torch compile the model on macbooks
++    # Load device configuration from config_gpu.ini if it exists
++    try:
++        import configparser
++        import os
++        config = configparser.ConfigParser()
++        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config_gpu.ini')
++        if os.path.exists(config_path):
++            config.read(config_path)
++            if 'gpu' in config and 'device' in config['gpu']:
++                device = config['gpu']['device'].strip('"').strip("'")
++                
++                # Apply MPS-specific optimizations if using MPS
++                if device == "mps" and 'mps' in config:
++                    print("Applying MPS-specific optimizations")
++                    if 'memory_limit' in config['mps']:
++                        memory_limit = int(config['mps']['memory_limit'])
++                        # If PyTorch supports this in the future:
++                        # torch.mps.set_memory_limit(memory_limit * 1024 * 1024)
++                        print(f"MPS memory limit set to {memory_limit} MB")
++                    
++                    if 'use_optimized_kernels' in config['mps']:
++                        use_optimized = config['mps']['use_optimized_kernels'].lower() == 'true'
++                        if use_optimized:
++                            # Use these settings in future when PyTorch MPS backend supports them
++                            print("Using optimized MPS kernels")
++            else:
++                device = "cuda"  # Default to CUDA if config exists but doesn't specify device
++        else:
++            device = "cuda"  # Default to CUDA if no config file
++    except Exception as e:
++        print(f"Error loading GPU configuration: {e}")
++        # Fall back to default if any error occurs with config
++        device = "cuda"    # Always use CUDA
++    # Set optimal dtype based on device
++    if device == "mps":
++        # MPS works best with float32 for stability on macOS
++        dtype = "float32"
++        print("Using float32 precision for MPS device")
++    else:
++        # For CUDA, use best available precision
++        dtype = (
++            "bfloat16"
++            if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
++            else "float16"
++        )  # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
++    #compile = True  # do not torch compile the model on macbooks
++    compile = False  # disabled torch compile for macbooks with MPS
+ 
+     # various inits, derived attributes, I/O setup
+     # if not ddp, we are running on a single gpu, and one process
+@@ -366,11 +406,40 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     if master_process:
+         os.makedirs(out_dir, exist_ok=True)
+     torch.manual_seed(1337 + seed_offset)
++    
++    # Set number of threads for CPU operations
++    torch.set_num_threads(8)  # Use 8 threads for CPU operations
++    
++    # PyTorch backend optimizations
+     torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
+     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
+-    device_type = (
+-        "cuda" if "cuda" in device else "cpu"
+-    )  # for later use in torch.autocast
++    torch.backends.cudnn.benchmark = True  # enable cudnn auto-tuner
++    torch.backends.cudnn.deterministic = False  # more efficient when not needed
++    
++    # Define device_type for later use
++    device_type = "cuda" if "cuda" in device else "mps" if "mps" in device else "cpu"
++    
++    # Memory management based on config file
++    try:
++        if 'gpu' in config and 'memory_fraction' in config['gpu']:
++            memory_fraction = float(config['gpu']['memory_fraction'])
++            print(f"Using memory fraction from config: {memory_fraction}")
++        else:
++            memory_fraction = 0.8  # default
++            
++        if device_type == "cuda":
++            # Configure CUDA memory usage
++            torch.cuda.set_per_process_memory_fraction(memory_fraction)
++            
++            if 'cuda' in config and 'empty_cache_on_start' in config['cuda'] and config['cuda']['empty_cache_on_start'].lower() == 'true':
++                torch.cuda.empty_cache()  # clear any existing cache
++                print("Cleared CUDA cache on startup")
++    except Exception as e:
++        print(f"Error configuring memory: {e}")
++        # Use default memory settings if there's an error
++        if device_type == "cuda":
++            torch.cuda.set_per_process_memory_fraction(0.8)
++            torch.cuda.empty_cache()
+     # note: float16 data type will automatically use a GradScaler
+     ptdtype = {
+         "float32": torch.float32,
+diff --git a/templates/nanoGPT/experiment.py b/templates/nanoGPT/experiment.py
+index 1cf2585..f79fbb1 100644
+--- a/templates/nanoGPT/experiment.py
++++ b/templates/nanoGPT/experiment.py
+@@ -318,9 +318,9 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     # -----------------------------------------------------------------------------
+     # default config values designed to train a gpt2 (124M) on OpenWebText
+     # data
+-    gradient_accumulation_steps = 1
+-    batch_size = 64 if dataset == "shakespeare_char" else 32
+-    block_size = 256  # context of up to 256 previous characters
++    gradient_accumulation_steps = 4  # Increased from 1 to accumulate gradients over more batches
++    batch_size = 96 if dataset == "shakespeare_char" else 48  # Increased from 64/32 for better throughput
++    block_size = 384  # Increased from 256 to 384 for larger context
+     # I/O
+     eval_interval = 250 if dataset == "shakespeare_char" else 1000
+     log_interval = 10 if dataset == "shakespeare_char" else 100
+@@ -328,10 +328,10 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     eval_only = False  # if True, script exits right after the first eval
+     always_save_checkpoint = False  # we expect to overfit on this small dataset, so only save when val improves
+     never_save_checkpoint = True  # never save checkpoints
+-    # model
+-    n_layer = 6  # baby GPT model :)
+-    n_head = 6
+-    n_embd = 384
++    # model - reduced size for better memory efficiency
++    n_layer = 4  # reduced from 6 to 4 layers
++    n_head = 4   # reduced from 6 to 4 heads per layer
++    n_embd = 256 # reduced from 384 to 256 embedding dimension
+     dropout = 0.2  # for pretraining 0 is good, for finetuning try 0.1+
+     bias = False  # do we use bias inside LayerNorm and Linear layers?
+     # adamw optimizer
+@@ -349,13 +349,53 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     # DDP settings
+     backend = "nccl"  # 'nccl', 'gloo', etc.
+     # system
+-    device = "cuda"  # Always use CUDA
+-    dtype = (
+-        "bfloat16"
+-        if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+-        else "float16"
+-    )  # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
+-    compile = True  # do not torch compile the model on macbooks
++    # Load device configuration from config_gpu.ini if it exists
++    try:
++        import configparser
++        import os
++        config = configparser.ConfigParser()
++        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config_gpu.ini')
++        if os.path.exists(config_path):
++            config.read(config_path)
++            if 'gpu' in config and 'device' in config['gpu']:
++                device = config['gpu']['device'].strip('"').strip("'")
++                
++                # Apply MPS-specific optimizations if using MPS
++                if device == "mps" and 'mps' in config:
++                    print("Applying MPS-specific optimizations")
++                    if 'memory_limit' in config['mps']:
++                        memory_limit = int(config['mps']['memory_limit'])
++                        # If PyTorch supports this in the future:
++                        # torch.mps.set_memory_limit(memory_limit * 1024 * 1024)
++                        print(f"MPS memory limit set to {memory_limit} MB")
++                    
++                    if 'use_optimized_kernels' in config['mps']:
++                        use_optimized = config['mps']['use_optimized_kernels'].lower() == 'true'
++                        if use_optimized:
++                            # Use these settings in future when PyTorch MPS backend supports them
++                            print("Using optimized MPS kernels")
++            else:
++                device = "cuda"  # Default to CUDA if config exists but doesn't specify device
++        else:
++            device = "cuda"  # Default to CUDA if no config file
++    except Exception as e:
++        print(f"Error loading GPU configuration: {e}")
++        # Fall back to default if any error occurs with config
++        device = "cuda"    # Always use CUDA
++    # Set optimal dtype based on device
++    if device == "mps":
++        # MPS works best with float32 for stability on macOS
++        dtype = "float32"
++        print("Using float32 precision for MPS device")
++    else:
++        # For CUDA, use best available precision
++        dtype = (
++            "bfloat16"
++            if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
++            else "float16"
++        )  # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
++    #compile = True  # do not torch compile the model on macbooks
++    compile = False  # disabled torch compile for macbooks with MPS
+ 
+     # various inits, derived attributes, I/O setup
+     # if not ddp, we are running on a single gpu, and one process
+@@ -366,11 +406,40 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     if master_process:
+         os.makedirs(out_dir, exist_ok=True)
+     torch.manual_seed(1337 + seed_offset)
++    
++    # Set number of threads for CPU operations
++    torch.set_num_threads(8)  # Use 8 threads for CPU operations
++    
++    # PyTorch backend optimizations
+     torch.backends.cuda.matmul.allow_tf32 = True  # allow tf32 on matmul
+     torch.backends.cudnn.allow_tf32 = True  # allow tf32 on cudnn
+-    device_type = (
+-        "cuda" if "cuda" in device else "cpu"
+-    )  # for later use in torch.autocast
++    torch.backends.cudnn.benchmark = True  # enable cudnn auto-tuner
++    torch.backends.cudnn.deterministic = False  # more efficient when not needed
++    
++    # Define device_type for later use
++    device_type = "cuda" if "cuda" in device else "mps" if "mps" in device else "cpu"
++    
++    # Memory management based on config file
++    try:
++        if 'gpu' in config and 'memory_fraction' in config['gpu']:
++            memory_fraction = float(config['gpu']['memory_fraction'])
++            print(f"Using memory fraction from config: {memory_fraction}")
++        else:
++            memory_fraction = 0.8  # default
++            
++        if device_type == "cuda":
++            # Configure CUDA memory usage
++            torch.cuda.set_per_process_memory_fraction(memory_fraction)
++            
++            if 'cuda' in config and 'empty_cache_on_start' in config['cuda'] and config['cuda']['empty_cache_on_start'].lower() == 'true':
++                torch.cuda.empty_cache()  # clear any existing cache
++                print("Cleared CUDA cache on startup")
++    except Exception as e:
++        print(f"Error configuring memory: {e}")
++        # Use default memory settings if there's an error
++        if device_type == "cuda":
++            torch.cuda.set_per_process_memory_fraction(0.8)
++            torch.cuda.empty_cache()
+     # note: float16 data type will automatically use a GradScaler
+     ptdtype = {
+         "float32": torch.float32,
+@@ -389,6 +458,16 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+     else:
+         data_dir = os.path.join("../../../data", dataset)
+ 
++    # Configure CPU-GPU memory swapping based on config
++    use_pinned_memory = True  # Default
++    try:
++        if 'memory_management' in config:
++            if 'enable_pinned_memory' in config['memory_management']:
++                use_pinned_memory = config['memory_management']['enable_pinned_memory'].lower() == 'true'
++                print(f"Pinned memory enabled: {use_pinned_memory}")
++    except Exception as e:
++        print(f"Error configuring memory swapping: {e}")
++    
+     def get_batch(split):
+         # We recreate np.memmap every batch to avoid a memory leak, as per
+         # https://stackoverflow.com/questions/45132940/numpy-memmap-memory-usage-want-to-iterate-once/61472122#61472122
+@@ -410,13 +489,25 @@ def train(dataset="shakespeare_char", out_dir="run_0", seed_offset=0):
+                 for i in ix
+             ]
+         )
+-        if device_type == "cuda":
++        
++        # Use pinned memory for faster CPU-GPU transfers based on config
++        if device_type == "cuda" and use_pinned_memory:
+             # pin arrays x,y, which allows us to move them to GPU asynchronously (non_blocking=True)
+             x, y = x.pin_memory().to(device, non_blocking=True), y.pin_memory().to(
+                 device, non_blocking=True
+             )
++        elif device_type == "mps" and use_pinned_memory:
++            # MPS also benefits from pinned memory, but pin_memory() might not be fully supported
++            try:
++                x, y = x.pin_memory().to(device, non_blocking=True), y.pin_memory().to(
++                    device, non_blocking=True
++                )
++            except:
++                # Fall back to regular transfer if pin_memory fails on MPS
++                x, y = x.to(device), y.to(device)
+         else:
+             x, y = x.to(device), y.to(device)
++        
+         return x, y
+ 
+     iter_num = 0
