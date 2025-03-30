@@ -1,0 +1,10 @@
+drwxr-xr-x@  19 timgregg  staff    608 Mar 27 11:57 SakanaAI
+drwxr-xr-x   19 timgregg  staff    608 Mar 29 23:37 Upsonic
+drwxr-xr-x@  27 timgregg  staff    864 Mar 26 21:29 deepseek-ai
+drwxr-xr-x@ 172 timgregg  staff   5504 Mar 26 21:44 langchain-ai
+drwxr-xr-x    2 timgregg  staff     64 Mar 26 21:23 logs
+drwxr-xr-x  198 timgregg  staff   6336 Mar 27 14:20 openai
+drwxr-xr-x@  33 timgregg  staff   1056 Mar 26 21:32 pydantic
+drwxr-xr-x@  54 timgregg  staff   1728 Mar 27 06:32 stanfordnlp
+drwxr-xr-x@ 101 timgregg  staff   3232 Mar 27 17:03 streamlit
+drwxr-xr-x@  15 timgregg  staff    480 Mar 27 06:33 zou-group
