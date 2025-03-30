@@ -1,0 +1,18 @@
+{
+  "active_vector_store_id": "vs_67e87631da7c8191966d60b4d78b9e25",
+  "vector_stores": [
+    {
+      "id": "vs_67e87631da7c8191966d60b4d78b9e25",
+      "name": "Personal_Knowledge_Base",
+      "created_at": 1743287857,
+      "file_count": 8
+    },
+    {
+      "id": "vs_67e87c9ac1148191abdbd2f866a23dd7",
+      "name": "AI_Papers_ArXiv_Recent_Week",
+      "created_at": 1743289498,
+      "file_count": 0
+    }
+  ],
+  "last_updated": "2025-03-29T19:04:58.806531"
+}

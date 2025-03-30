@@ -1,0 +1,20 @@
+{
+  "raw_text": "-",
+  "segments": [
+    {
+      "text": "-",
+      "score": 0.0
+    }
+  ],
+  "relevant_segments": [],
+  "summaries": [],
+  "entities": [],
+  "relationships": [],
+  "aligned_entities": [],
+  "aligned_triples": [],
+  "final_triples": [],
+  "integrated_triples": [],
+  "prompt_tokens": 556,
+  "completion_tokens": 4,
+  "processing_time": 3.577091693878174
+}

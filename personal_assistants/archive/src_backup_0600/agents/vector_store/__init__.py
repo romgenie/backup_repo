@@ -1,0 +1,3 @@
+"""
+Vector store agent initialization.
+"""

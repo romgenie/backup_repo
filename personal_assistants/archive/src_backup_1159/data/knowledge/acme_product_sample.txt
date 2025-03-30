@@ -1,0 +1,47 @@
+# ACME PRODUCT CATALOGUE
+## Innovative Products for the Discerning Customer
+
+### Dynamite Dispenser
+**Product ID:** DD-101
+**Dimensions:** 12" x 6" x 4"
+**Input Capacity:** 10 sticks of dynamite
+**Output Speed:** 1 stick every 2 seconds
+**Safety Features:** None
+**Warranty:** 24 hours or until first explosion, whichever comes first
+**Price:** $199.99
+
+### Rocket-Powered Roller Skates
+**Product ID:** RPRS-202
+**Speed:** Up to 150 mph
+**Fuel Capacity:** 2 gallons of high-octane rocket fuel
+**Braking System:** None
+**Weight Limit:** 250 lbs
+**Warranty:** Void upon ignition
+**Price:** $299.99
+
+### Portable Hole
+**Product ID:** PH-303
+**Dimensions:** 3 feet in diameter when unfolded
+**Depth:** Infinite
+**Portability:** Folds to fit in your pocket
+**Storage Capacity:** Unlimited
+**Warning:** Do not place on ceiling or walls
+**Price:** $499.99
+
+### Earthquake Pills
+**Product ID:** EP-404
+**Dosage:** 1 pill per earthquake
+**Effects:** Creates localized tremors in a 10-foot radius
+**Duration:** 30 seconds of shaking
+**Side Effects:** Temporary gravitational anomalies
+**Warning:** Do not take while standing on cliffs
+**Price:** $19.99 per bottle (10 pills)
+
+### Triple-Strength Fortified Leg Muscle Vitamins
+**Product ID:** TSFLMV-505
+**Dosage:** 2 tablets daily
+**Effects:** Increases running speed by 300%
+**Duration:** 4 hours per dose
+**Side Effects:** Uncontrollable leg spasms
+**Warning:** Do not use while swimming
+**Price:** $39.99 per bottle (30 tablets)
